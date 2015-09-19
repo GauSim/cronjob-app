@@ -1,6 +1,5 @@
 node_modules
 typings
-index.js.map
-JobFactory.js.map
-JobFactory.js
+*.js.map
 .idea
+.tscache
