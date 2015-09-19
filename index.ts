@@ -1,15 +1,24 @@
-/// <reference path="typings/tsd.d.ts" />
-/// <reference path="JobFactory.ts" />
+console.log('#################			FUN 		###################');
 
-module JobFactory {
-    var factory = new JobFactory.App();
-    factory.create("http://gausmann-media.de");
-    factory.create("http://gausmann-media.de");
-}
+
+import {JobFactory} from './JobFactory/JobFactory';
 
 
 
+var factory = new JobFactory();
+
+
+factory.start();
+factory.create("http://explore.gausmann-media.de/wp-content/uploads/2012/10/qout.png", 1);
+
+setTimeout(() => {
+	let _jobs = factory.getJobList();
+	console.log(_jobs);
+	factory.stop();
+
+}, 20000)
 
 
 
-
+console.log('#################			end 		###################');
+ 
