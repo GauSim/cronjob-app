@@ -17,16 +17,18 @@ export class JobFactory {
         var _jobName = self.createIndex();
         var Job: iJob = {
             name: _jobName,
+            url: url,
             intervall: new JobInterval(),
-            stats: { ok: 0, fail: 0, last: null },
+            stats: { ok: 0, fail: 0, last: null, log: null },
             task: () => {
                 console.log('Job Fired!');
                 self.doReuest(url)
                     .then(body => {
-                        self.logStats(true, _jobName)
+                        var log = (body ? body.substr(0, 100) : null)
+                        self.logStats(true, _jobName, log)
                     },
                         error => {
-                            self.logStats(false, _jobName)
+                            self.logStats(false, _jobName, JSON.stringify(error))
                         });
                
                 //self.stop();
@@ -41,10 +43,15 @@ export class JobFactory {
     }
     getJobList() {
         return _.map(this.Jobs, j => {
-            return { name: j.name, stats: j.stats };
+            return {
+                name: j.name,
+                stats: j.stats,
+                url: j.url,
+                intervall: j.intervall
+            };
         })
     }
-    private logStats(susscess: boolean, jobname: string) {
+    private logStats(susscess: boolean, jobname: string, log: string) {
         var self = this;
 
         var job = _.find<iJob>(self.Jobs, j => { return j.name == jobname });
@@ -55,14 +62,15 @@ export class JobFactory {
         else
             job.stats.fail++;
 
-        job.stats.last = new Date().toDateString() +' | '+ new Date().toTimeString();
+        job.stats.log = log;
+
+        job.stats.last = new Date().toISOString();
     }
     private doReuest(url: string): Q.IPromise<string> {
         var d = Q.defer();
         request
             .get(url, (error, response, body) => {
                 if (!error && response.statusCode == 200) {
-                    //var info = JSON.parse(body);
                     d.resolve(body);
                 } else {
                     d.reject(error);
@@ -84,15 +92,16 @@ export class JobFactory {
     private executeJobs(interval: JobInterval) {
         var self = this;
         let execute = (j: iJob) => {
-            console.log(`--- START  ${j.name}`);
-            self.logTime(interval);
+
             try {
+                var t = self.logTime(interval);
+                console.log(`--- START ${j.name} ${ t }`);
                 j.task();
             } catch (ex) {
-                console.log(ex);
+                j.stats.fail++;
+                j.stats.log = ex;
             }
 
-            console.log(`--- END    ${j.name}`);
         }
         let minTodo = _.filter<iJob>(self.Jobs, j=> {
             return (interval.minutes > 0) && (j.intervall.minutes > 0) && ((interval.minutes % j.intervall.minutes) == 0);
@@ -112,7 +121,7 @@ export class JobFactory {
 
     private logTime(o: JobInterval) {
         var timer: string = `${o.days}, ${o.hours}:${o.minutes}:${o.seconds}`;
-        console.log(timer);
+        return timer;
     }
     stop() {
         var self = this;
@@ -139,7 +148,7 @@ export class JobFactory {
             },
         }
 
-        var _tick = 100; //1000;
+        var _tick = 1000;
         var o = new JobInterval();
 
         this.runner = setInterval(() => {
@@ -183,7 +192,8 @@ class JobInterval {
 }
 interface iJob {
     name: string;
+    url: string;
     intervall: JobInterval,
-    stats: { ok: number, fail: number, last: string },
+    stats: { ok: number, fail: number, last: string, log: string },
     task: () => void;
 }

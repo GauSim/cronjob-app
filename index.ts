@@ -1,24 +1,68 @@
-console.log('#################			FUN 		###################');
+import * as bodyParser from 'body-parser';
+import * as m from './JobFactory/JobFactory';
+import * as http from 'http';
+import * as express from 'express'
 
 
-import {JobFactory} from './JobFactory/JobFactory';
+
+process.on('uncaughtException', function(err) {
+	console.log(err);
+});
 
 
+var app = express();
 
-var factory = new JobFactory();
-
-
+var auth = function middlware1(req) {
+	//console.log(req.headers['X-GMAuth']);
+}
+var factory = new m.JobFactory();
 factory.start();
-factory.create("http://explore.gausmann-media.de/wp-content/uploads/2012/10/qout.png", 1);
-
-setTimeout(() => {
-	let _jobs = factory.getJobList();
-	console.log(_jobs);
-	factory.stop();
-
-}, 20000)
 
 
+app.use(bodyParser.json());
 
-console.log('#################			end 		###################');
- 
+app.use('/api/list', function(req, res, next) {
+	auth(req);
+
+	res.end(JSON.stringify(factory.getJobList(), null, "\t"));
+
+});
+app.use('/api/add', function(req, res, next) {
+	auth(req);
+
+	var data = req.body;
+	if (data && data.url && data.interval) {
+
+		factory.create(data.url, data.interval);
+		res.end(JSON.stringify(factory.getJobList(), null, "\t"));
+
+	} else {
+		res.end('');
+	}
+
+	next();
+});
+
+app.use('/api/remove', function(req, res, next) {
+	auth(req);
+
+	var data = req.body;
+	if (data && data.name) {
+
+		factory.remove(data.name);
+		res.end(JSON.stringify(factory.getJobList(), null, "\t"));
+
+	} else {
+		res.end('');
+	}
+
+	next();
+});
+app.use('/', express.static('frontend/dist'));
+
+var server = app.listen(3000, function() {
+	var host = server.address().address;
+	var port = server.address().port;
+
+	console.log('Example app listening at http://%s:%s', host, port);
+});

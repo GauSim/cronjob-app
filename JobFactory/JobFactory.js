@@ -11,15 +11,17 @@ var JobFactory = (function () {
         var _jobName = self.createIndex();
         var Job = {
             name: _jobName,
+            url: url,
             intervall: new JobInterval(),
-            stats: { ok: 0, fail: 0, last: null },
+            stats: { ok: 0, fail: 0, last: null, log: null },
             task: function () {
                 console.log('Job Fired!');
                 self.doReuest(url)
                     .then(function (body) {
-                    self.logStats(true, _jobName);
+                    var log = (body ? body.substr(0, 100) : null);
+                    self.logStats(true, _jobName, log);
                 }, function (error) {
-                    self.logStats(false, _jobName);
+                    self.logStats(false, _jobName, JSON.stringify(error));
                 });
             }
         };
@@ -31,10 +33,15 @@ var JobFactory = (function () {
     };
     JobFactory.prototype.getJobList = function () {
         return _.map(this.Jobs, function (j) {
-            return { name: j.name, stats: j.stats };
+            return {
+                name: j.name,
+                stats: j.stats,
+                url: j.url,
+                intervall: j.intervall
+            };
         });
     };
-    JobFactory.prototype.logStats = function (susscess, jobname) {
+    JobFactory.prototype.logStats = function (susscess, jobname, log) {
         var self = this;
         var job = _.find(self.Jobs, function (j) { return j.name == jobname; });
         if (!job)
@@ -43,7 +50,8 @@ var JobFactory = (function () {
             job.stats.ok++;
         else
             job.stats.fail++;
-        job.stats.last = new Date().toDateString() + ' | ' + new Date().toTimeString();
+        job.stats.log = log;
+        job.stats.last = new Date().toISOString();
     };
     JobFactory.prototype.doReuest = function (url) {
         var d = Q.defer();
@@ -69,15 +77,15 @@ var JobFactory = (function () {
     JobFactory.prototype.executeJobs = function (interval) {
         var self = this;
         var execute = function (j) {
-            console.log("--- START  " + j.name);
-            self.logTime(interval);
             try {
+                var t = self.logTime(interval);
+                console.log("--- START " + j.name + " " + t);
                 j.task();
             }
             catch (ex) {
-                console.log(ex);
+                j.stats.fail++;
+                j.stats.log = ex;
             }
-            console.log("--- END    " + j.name);
         };
         var minTodo = _.filter(self.Jobs, function (j) {
             return (interval.minutes > 0) && (j.intervall.minutes > 0) && ((interval.minutes % j.intervall.minutes) == 0);
@@ -92,7 +100,7 @@ var JobFactory = (function () {
     };
     JobFactory.prototype.logTime = function (o) {
         var timer = o.days + ", " + o.hours + ":" + o.minutes + ":" + o.seconds;
-        console.log(timer);
+        return timer;
     };
     JobFactory.prototype.stop = function () {
         var self = this;
@@ -118,7 +126,7 @@ var JobFactory = (function () {
                 self.executeJobs(interval);
             },
         };
-        var _tick = 100;
+        var _tick = 1000;
         var o = new JobInterval();
         this.runner = setInterval(function () {
             if (o.seconds < 59)

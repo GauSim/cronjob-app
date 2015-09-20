@@ -9,6 +9,8 @@
   "author": "Simon Gausmann",
   "license": "ISC",
   "dependencies": {
+    "body-parser": "^1.14.0",
+    "express": "^4.13.3",
     "grunt-cli": "^0.1.13",
     "q": "^1.4.1",
     "request": "^2.62.0",
