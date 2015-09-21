@@ -1,6 +1,7 @@
 var bodyParser = require('body-parser');
 var m = require('./JobFactory/JobFactory');
 var express = require('express');
+var moment = require('moment');
 process.on('uncaughtException', function (err) {
     console.log(err);
 });
@@ -8,7 +9,19 @@ var app = express();
 var auth = function middlware1(req) {
 };
 var factory = new m.JobFactory();
-factory.start();
+var mn = moment().add(1, 'day').set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0);
+var ready = setInterval(function () {
+    var now = moment();
+    var diff = mn.diff(now, 'minutes');
+    if (diff < 1) {
+        console.log('starting runner: ', moment().format());
+        factory.start();
+        clearInterval(ready);
+    }
+    else {
+        console.log('idel: ' + moment().format('HH:mm:ss'), "waiting: " + diff + " minutes " + mn.format('HH:mm:ss'));
+    }
+}, 999);
 app.use(bodyParser.json());
 app.use('/api/list', function (req, res, next) {
     auth(req);

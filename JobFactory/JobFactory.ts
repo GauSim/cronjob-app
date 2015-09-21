@@ -3,6 +3,8 @@
 import * as _ from 'underscore';
 import * as request from 'request';
 import * as Q from 'q';
+import * as moment from 'moment';
+
 
 export class JobFactory {
 
@@ -12,7 +14,7 @@ export class JobFactory {
     constructor() {
     }
 
-    create(url: string, minutes: number) {
+    create(url: string, minutes: number, hours?: number) {
         var self = this;
         var _jobName = self.createIndex();
         var Job: iJob = {
@@ -24,7 +26,7 @@ export class JobFactory {
                 console.log('Job Fired!');
                 self.doReuest(url)
                     .then(body => {
-                        var log = (body ? body.substr(0, 100) : null)
+                        var log = (body ? body.substr(0, 800) + ' ... ' : null)
                         self.logStats(true, _jobName, log)
                     },
                         error => {
@@ -34,7 +36,8 @@ export class JobFactory {
                 //self.stop();
             }
         }
-        Job.intervall.minutes = minutes; // 30 =>  every 30 minutes 
+        Job.intervall.minutes = (minutes ? minutes : 0); // 30 =>  every 30 minutes 
+        Job.intervall.hours = (hours ? hours : 0);
         // Job.intervall.hours = 1; // each hour
         self.Jobs.push(Job);
     }
@@ -151,7 +154,7 @@ export class JobFactory {
         var _tick = 1000;
         var o = new JobInterval();
 
-        this.runner = setInterval(() => {
+        self.runner = setInterval(() => {
 
 
             if (o.seconds < 59)

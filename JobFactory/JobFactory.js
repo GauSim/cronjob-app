@@ -6,7 +6,7 @@ var JobFactory = (function () {
     function JobFactory() {
         this.Jobs = [];
     }
-    JobFactory.prototype.create = function (url, minutes) {
+    JobFactory.prototype.create = function (url, minutes, hours) {
         var self = this;
         var _jobName = self.createIndex();
         var Job = {
@@ -18,14 +18,15 @@ var JobFactory = (function () {
                 console.log('Job Fired!');
                 self.doReuest(url)
                     .then(function (body) {
-                    var log = (body ? body.substr(0, 100) : null);
+                    var log = (body ? body.substr(0, 800) + ' ... ' : null);
                     self.logStats(true, _jobName, log);
                 }, function (error) {
                     self.logStats(false, _jobName, JSON.stringify(error));
                 });
             }
         };
-        Job.intervall.minutes = minutes;
+        Job.intervall.minutes = (minutes ? minutes : 0);
+        Job.intervall.hours = (hours ? hours : 0);
         self.Jobs.push(Job);
     };
     JobFactory.prototype.remove = function (name) {
@@ -128,7 +129,7 @@ var JobFactory = (function () {
         };
         var _tick = 1000;
         var o = new JobInterval();
-        this.runner = setInterval(function () {
+        self.runner = setInterval(function () {
             if (o.seconds < 59)
                 o.seconds++;
             else {

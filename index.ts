@@ -2,6 +2,7 @@ import * as bodyParser from 'body-parser';
 import * as m from './JobFactory/JobFactory';
 import * as http from 'http';
 import * as express from 'express'
+import * as moment from 'moment';
 
 
 
@@ -16,8 +17,23 @@ var auth = function middlware1(req) {
 	//console.log(req.headers['X-GMAuth']);
 }
 var factory = new m.JobFactory();
-factory.start();
 
+var mn = moment().add(1, 'day').set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0);
+
+
+var ready = setInterval(() => {
+	var now = moment();
+	var diff = mn.diff(now, 'minutes');
+
+	if (diff < 1) {
+		console.log('starting runner: ', moment().format());
+		factory.start();
+		clearInterval(ready);
+	} else {
+		console.log('idel: ' + moment().format('HH:mm:ss'), "waiting: " + diff + " minutes " + mn.format('HH:mm:ss'));
+	}
+
+}, 999);
 
 app.use(bodyParser.json());
 

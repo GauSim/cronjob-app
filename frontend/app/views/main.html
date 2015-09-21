@@ -28,7 +28,7 @@
 			<small>{{ job.url | json }}</small>
 		</h4>
 
-		<p>{{ job.intervall }}</p>
+		<p>{{ job.intervall.minutes }} Minutes</p>
 
 		<p class="list-group-item-text" ng-show="job.stats.last == null">
 			last run : <span class="label label-default label-pill">never, waiting ..</span>
@@ -36,7 +36,7 @@
 			<br/>
 		</p>
 		<p class="list-group-item-text" ng-if="job.stats.last != null">
-			last run : <span class="label label-info label-pill">{{ main.moment(job.stats.last).fromNow() }}</span>
+			last run : <span class="label label-info label-pill">{{ main.moment(job.stats.last).fromNow() }}</span> {{ job.stats.last }}
 			<br/>
 			<br/>
 		</p>
