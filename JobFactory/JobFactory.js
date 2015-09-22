@@ -2,17 +2,20 @@
 var _ = require('underscore');
 var request = require('request');
 var Q = require('q');
+var moment = require('moment');
 var JobFactory = (function () {
     function JobFactory() {
+        this.runner = null;
         this.Jobs = [];
+        this.startedAt = null;
     }
-    JobFactory.prototype.create = function (url, minutes, hours) {
+    JobFactory.prototype.create = function (url, interval) {
         var self = this;
         var _jobName = self.createIndex();
         var Job = {
             name: _jobName,
             url: url,
-            intervall: new JobInterval(),
+            interval: interval,
             stats: { ok: 0, fail: 0, last: null, log: null },
             task: function () {
                 console.log('Job Fired!');
@@ -25,8 +28,6 @@ var JobFactory = (function () {
                 });
             }
         };
-        Job.intervall.minutes = (minutes ? minutes : 0);
-        Job.intervall.hours = (hours ? hours : 0);
         self.Jobs.push(Job);
     };
     JobFactory.prototype.remove = function (name) {
@@ -38,7 +39,7 @@ var JobFactory = (function () {
                 name: j.name,
                 stats: j.stats,
                 url: j.url,
-                intervall: j.intervall
+                intervall: j.interval
             };
         });
     };
@@ -52,7 +53,7 @@ var JobFactory = (function () {
         else
             job.stats.fail++;
         job.stats.log = log;
-        job.stats.last = new Date().toISOString();
+        job.stats.last = moment().format('X');
     };
     JobFactory.prototype.doReuest = function (url) {
         var d = Q.defer();
@@ -89,13 +90,13 @@ var JobFactory = (function () {
             }
         };
         var minTodo = _.filter(self.Jobs, function (j) {
-            return (interval.minutes > 0) && (j.intervall.minutes > 0) && ((interval.minutes % j.intervall.minutes) == 0);
+            return ((interval.minutes % j.interval.minutes) == 0);
         });
         var hourTodo = _.filter(self.Jobs, function (j) {
-            return (interval.minutes == 0 && interval.hours > 0) && (j.intervall.hours > 0) && ((interval.hours % j.intervall.hours) == 0);
+            return (j.interval.hours > 0) && ((interval.hours % j.interval.hours) == 0);
         });
         var dayTodo = _.filter(self.Jobs, function (j) {
-            return (interval.hours == 0 && interval.days > 0) && (j.intervall.days > 0) && ((interval.days % j.intervall.days) == 0);
+            return (j.interval.days > 0) && ((interval.days % j.interval.days) == 0);
         });
         _.each(_.union(minTodo, hourTodo, dayTodo), execute);
     };
@@ -103,27 +104,31 @@ var JobFactory = (function () {
         var timer = o.days + ", " + o.hours + ":" + o.minutes + ":" + o.seconds;
         return timer;
     };
+    JobFactory.prototype.getStatus = function () {
+        return {
+            isRunning: (this.runner !== null),
+            startedAt: this.startedAt
+        };
+    };
     JobFactory.prototype.stop = function () {
         var self = this;
         clearInterval(self.runner);
+        self.runner = self.startedAt = null;
     };
     JobFactory.prototype.start = function () {
         var self = this;
+        self.startedAt = moment().format('X');
         var Events = {
             onMinute: function (interval) {
-                console.log('fire min Event ' + interval.minutes);
                 self.executeJobs(interval);
             },
             onHour: function (interval) {
-                console.log('fire hour Event ' + interval.hours);
                 self.executeJobs(interval);
             },
             onDay: function (interval) {
-                console.log('fire Day Event ' + interval.days);
                 self.executeJobs(interval);
             },
             onWeek: function (interval) {
-                console.log('fire Week Event ' + interval.weeks);
                 self.executeJobs(interval);
             },
         };
@@ -136,6 +141,7 @@ var JobFactory = (function () {
                 Events.onMinute(o);
                 o.minutes++;
                 o.seconds = 0;
+                console.log(self.logTime(o));
             }
             if (o.minutes == 60) {
                 Events.onHour(o);
@@ -167,4 +173,5 @@ var JobInterval = (function () {
     }
     return JobInterval;
 })();
+exports.JobInterval = JobInterval;
 //# sourceMappingURL=JobFactory.js.map

@@ -8,19 +8,20 @@ import * as moment from 'moment';
 
 export class JobFactory {
 
-    private runner: NodeJS.Timer;
+    private runner: NodeJS.Timer = null;
     private Jobs: iJob[] = [];
+    private startedAt: string = null;
 
     constructor() {
     }
 
-    create(url: string, minutes: number, hours?: number) {
+    create(url: string, interval: JobInterval) {
         var self = this;
         var _jobName = self.createIndex();
         var Job: iJob = {
             name: _jobName,
             url: url,
-            intervall: new JobInterval(),
+            interval: interval,
             stats: { ok: 0, fail: 0, last: null, log: null },
             task: () => {
                 console.log('Job Fired!');
@@ -32,13 +33,8 @@ export class JobFactory {
                         error => {
                             self.logStats(false, _jobName, JSON.stringify(error))
                         });
-               
-                //self.stop();
             }
         }
-        Job.intervall.minutes = (minutes ? minutes : 0); // 30 =>  every 30 minutes 
-        Job.intervall.hours = (hours ? hours : 0);
-        // Job.intervall.hours = 1; // each hour
         self.Jobs.push(Job);
     }
     remove(name: string) {
@@ -50,7 +46,7 @@ export class JobFactory {
                 name: j.name,
                 stats: j.stats,
                 url: j.url,
-                intervall: j.intervall
+                intervall: j.interval
             };
         })
     }
@@ -67,7 +63,7 @@ export class JobFactory {
 
         job.stats.log = log;
 
-        job.stats.last = new Date().toISOString();
+        job.stats.last = moment().format('X');
     }
     private doReuest(url: string): Q.IPromise<string> {
         var d = Q.defer();
@@ -94,6 +90,7 @@ export class JobFactory {
 
     private executeJobs(interval: JobInterval) {
         var self = this;
+
         let execute = (j: iJob) => {
 
             try {
@@ -107,13 +104,13 @@ export class JobFactory {
 
         }
         let minTodo = _.filter<iJob>(self.Jobs, j=> {
-            return (interval.minutes > 0) && (j.intervall.minutes > 0) && ((interval.minutes % j.intervall.minutes) == 0);
+            return ((interval.minutes % j.interval.minutes) == 0);
         });
         let hourTodo = _.filter<iJob>(self.Jobs, j=> {
-            return (interval.minutes == 0 && interval.hours > 0) && (j.intervall.hours > 0) && ((interval.hours % j.intervall.hours) == 0);
+            return (j.interval.hours > 0) && ((interval.hours % j.interval.hours) == 0);
         });
         let dayTodo = _.filter<iJob>(self.Jobs, j=> {
-            return (interval.hours == 0 && interval.days > 0) && (j.intervall.days > 0) && ((interval.days % j.intervall.days) == 0);
+            return (j.interval.days > 0) && ((interval.days % j.interval.days) == 0);
         });
 
         _.each(_.union(minTodo, hourTodo, dayTodo), execute);
@@ -126,27 +123,32 @@ export class JobFactory {
         var timer: string = `${o.days}, ${o.hours}:${o.minutes}:${o.seconds}`;
         return timer;
     }
+    getStatus() {
+        return {
+            isRunning: (this.runner !== null),
+            startedAt: this.startedAt
+        };
+    }
     stop() {
         var self = this;
         clearInterval(self.runner);
+        self.runner = self.startedAt = null;
     }
     start() {
         var self = this;
+        self.startedAt = moment().format('X');
+
         var Events = {
             onMinute: (interval: JobInterval) => {
-                console.log('fire min Event ' + interval.minutes);
                 self.executeJobs(interval);
             },
             onHour: (interval: JobInterval) => {
-                console.log('fire hour Event ' + interval.hours);
                 self.executeJobs(interval);
             },
             onDay: (interval: JobInterval) => {
-                console.log('fire Day Event ' + interval.days);
                 self.executeJobs(interval);
             },
             onWeek: (interval: JobInterval) => {
-                console.log('fire Week Event ' + interval.weeks);
                 self.executeJobs(interval);
             },
         }
@@ -156,6 +158,7 @@ export class JobFactory {
 
         self.runner = setInterval(() => {
 
+           
 
             if (o.seconds < 59)
                 o.seconds++;
@@ -163,6 +166,7 @@ export class JobFactory {
                 Events.onMinute(o);
                 o.minutes++
                 o.seconds = 0;
+                 console.log(self.logTime(o));
             }
 
             if (o.minutes == 60) {
@@ -186,7 +190,7 @@ export class JobFactory {
         }, _tick);
     }
 }
-class JobInterval {
+export class JobInterval {
     seconds: number = 0;
     minutes: number = 0;
     hours: number = 0;
@@ -196,7 +200,7 @@ class JobInterval {
 interface iJob {
     name: string;
     url: string;
-    intervall: JobInterval,
+    interval: JobInterval,
     stats: { ok: number, fail: number, last: string, log: string },
     task: () => void;
 }

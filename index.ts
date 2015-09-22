@@ -18,8 +18,8 @@ var auth = function middlware1(req) {
 }
 var factory = new m.JobFactory();
 
-var mn = moment().add(1, 'day').set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0);
-
+//var mn = moment().add(1, 'day').set('hour', 0).set('minute', 0).set('second', 0).set('millisecond', 0);
+var mn = moment();
 
 var ready = setInterval(() => {
 	var now = moment();
@@ -36,21 +36,26 @@ var ready = setInterval(() => {
 }, 999);
 
 app.use(bodyParser.json());
-
-app.use('/api/list', function(req, res, next) {
+app.use('/api/status', (req, res, next) => {
 	auth(req);
 
-	res.end(JSON.stringify(factory.getJobList(), null, "\t"));
+	res.end(JSON.stringify(factory.getStatus()))
 
 });
-app.use('/api/add', function(req, res, next) {
+app.use('/api/list', (req, res, next) => {
 	auth(req);
 
-	var data = req.body;
+	res.end(JSON.stringify(factory.getJobList()));
+
+});
+app.use('/api/add', (req, res, next) => {
+	auth(req);
+
+	var data: { url: string, interval: m.JobInterval } = req.body;
 	if (data && data.url && data.interval) {
 
 		factory.create(data.url, data.interval);
-		res.end(JSON.stringify(factory.getJobList(), null, "\t"));
+		res.end(JSON.stringify(factory.getJobList()));
 
 	} else {
 		res.end('');
@@ -59,7 +64,7 @@ app.use('/api/add', function(req, res, next) {
 	next();
 });
 
-app.use('/api/remove', function(req, res, next) {
+app.use('/api/remove', (req, res, next) => {
 	auth(req);
 
 	var data = req.body;

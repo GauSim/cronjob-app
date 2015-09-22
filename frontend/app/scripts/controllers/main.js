@@ -13,22 +13,28 @@ angular.module('frontendApp')
 
     self.moment = moment;
 
-    self.awesomeThings = [
-      'HTML5 Boilerplate',
-      'AngularJS',
-      'Karma'
-    ];
+
 
     self.sync = function () {
-      $http.get('/api/list').success(function (data) {
-        console.log(data);
-        self.awesomeThings = data;
-      });
+      $http.get('/api/status')
+        .success(function (status) {
+          self.status = status;
+        });
+      $http.get('/api/list')
+        .success(function (data) {
+          self.awesomeThings = data;
+        });
     };
 
     self.newItem = {
       url: 'http://google.de',
-      interval: 1
+      interval: {
+        seconds: 0,
+        minutes: 0,
+        hours: 0,
+        days: 0,
+        weeks: 0
+      }
     };
 
     self.add = function () {
